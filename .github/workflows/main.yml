@@ -66,6 +66,8 @@ jobs:
         java-version: 8
     - name: Prepare ssltest.local.properties
       run: echo enable_ssl_tests=true > ssltest.local.properties
+    - name: Setup upterm session
+      uses: lhotari/action-upterm@v1
     - uses: burrunan/gradle-cache-action@v1
       name: Test
       env:
