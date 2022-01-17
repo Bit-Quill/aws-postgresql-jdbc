@@ -40,6 +40,7 @@ public class Parser {
    * @param withParameters            whether to replace ?, ? with $1, $2, etc
    * @param splitStatements           whether to split statements by semicolon
    * @param isBatchedReWriteConfigured whether re-write optimization is enabled
+   * @param quoteReturningIdentifiers whether to quote identifiers returned using returning clause
    * @param returningColumnNames      for simple insert, update, delete add returning with given column names
    * @return list of native queries
    * @throws SQLException if unable to add returning clause (invalid column names)
@@ -47,6 +48,7 @@ public class Parser {
   public static List<NativeQuery> parseJdbcSql(String query, boolean standardConformingStrings,
       boolean withParameters, boolean splitStatements,
       boolean isBatchedReWriteConfigured,
+      boolean quoteReturningIdentifiers,
       String... returningColumnNames) throws SQLException {
     if (!withParameters && !splitStatements
         && returningColumnNames != null && returningColumnNames.length == 0) {
@@ -145,7 +147,7 @@ public class Parser {
             }
             fragmentStart = i + 1;
             if (nativeSql.length() > 0) {
-              if (addReturning(nativeSql, currentCommandType, returningColumnNames, isReturningPresent)) {
+              if (addReturning(nativeSql, currentCommandType, returningColumnNames, isReturningPresent, quoteReturningIdentifiers)) {
                 isReturningPresent = true;
               }
 
@@ -211,7 +213,11 @@ public class Parser {
       if (keywordStart >= 0 && (i == aChars.length - 1 || !isKeyWordChar)) {
         int wordLength = (isKeyWordChar ? i + 1 : keywordEnd) - keywordStart;
         if (currentCommandType == SqlCommandType.BLANK) {
-          if (wordLength == 6 && parseUpdateKeyword(aChars, keywordStart)) {
+          if (wordLength == 6 && parseCreateKeyword(aChars, keywordStart)) {
+            currentCommandType = SqlCommandType.CREATE;
+          } else if (wordLength == 5 && parseAlterKeyword(aChars, keywordStart)) {
+            currentCommandType = SqlCommandType.ALTER;
+          } else if (wordLength == 6 && parseUpdateKeyword(aChars, keywordStart)) {
             currentCommandType = SqlCommandType.UPDATE;
           } else if (wordLength == 6 && parseDeleteKeyword(aChars, keywordStart)) {
             currentCommandType = SqlCommandType.DELETE;
@@ -280,7 +286,7 @@ public class Parser {
       return nativeQueries != null ? nativeQueries : Collections.<NativeQuery>emptyList();
     }
 
-    if (addReturning(nativeSql, currentCommandType, returningColumnNames, isReturningPresent)) {
+    if (addReturning(nativeSql, currentCommandType, returningColumnNames, isReturningPresent, quoteReturningIdentifiers)) {
       isReturningPresent = true;
     }
 
@@ -342,7 +348,7 @@ public class Parser {
   }
 
   private static boolean addReturning(StringBuilder nativeSql, SqlCommandType currentCommandType,
-      String[] returningColumnNames, boolean isReturningPresent) throws SQLException {
+      String[] returningColumnNames, boolean isReturningPresent, boolean quoteReturningIdentifiers) throws SQLException {
     if (isReturningPresent || returningColumnNames.length == 0) {
       return false;
     }
@@ -363,7 +369,14 @@ public class Parser {
       if (col > 0) {
         nativeSql.append(", ");
       }
-      Utils.escapeIdentifier(nativeSql, columnName);
+      /*
+      If the client quotes identifiers then doing so again would create an error
+       */
+      if (quoteReturningIdentifiers) {
+        Utils.escapeIdentifier(nativeSql, columnName);
+      } else {
+        nativeSql.append( columnName );
+      }
     }
     return true;
   }
@@ -654,6 +667,45 @@ public class Parser {
         && (query[offset + 3] | 32) == 'e'
         && (query[offset + 4] | 32) == 'c'
         && (query[offset + 5] | 32) == 't';
+  }
+
+  /**
+   * Parse string to check presence of CREATE keyword regardless of case.
+   *
+   * @param query char[] of the query statement
+   * @param offset position of query to start checking
+   * @return boolean indicates presence of word
+   */
+  public static boolean parseAlterKeyword(final char[] query, int offset) {
+    if (query.length < (offset + 5)) {
+      return false;
+    }
+
+    return (query[offset] | 32) == 'a'
+        && (query[offset + 1] | 32) == 'l'
+        && (query[offset + 2] | 32) == 't'
+        && (query[offset + 3] | 32) == 'e'
+        && (query[offset + 4] | 32) == 'r';
+  }
+
+  /**
+   * Parse string to check presence of CREATE keyword regardless of case.
+   *
+   * @param query char[] of the query statement
+   * @param offset position of query to start checking
+   * @return boolean indicates presence of word
+   */
+  public static boolean parseCreateKeyword(final char[] query, int offset) {
+    if (query.length < (offset + 6)) {
+      return false;
+    }
+
+    return (query[offset] | 32) == 'c'
+        && (query[offset + 1] | 32) == 'r'
+        && (query[offset + 2] | 32) == 'e'
+        && (query[offset + 3] | 32) == 'a'
+        && (query[offset + 4] | 32) == 't'
+        && (query[offset + 5] | 32) == 'e';
   }
 
   /**

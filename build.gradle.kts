@@ -44,6 +44,7 @@ fun reportsForHumans() = !(System.getenv()["CI"]?.toBoolean() ?: props.bool("CI"
 
 val lastEditYear = 2021 // TODO: by extra(lastEditYear("$rootDir/LICENSE"))
 
+// Do not enable spotbugs by default. Execute it only when -Pspotbugs is present
 val enableSpotBugs = props.bool("spotbugs", default = false)
 val enableCheckerframework by props()
 val skipCheckstyle by props()
@@ -178,6 +179,7 @@ allprojects {
         dependencies {
             val testImplementation by configurations
             val testRuntimeOnly by configurations
+            testImplementation("uk.org.webcompere:system-stubs-jupiter")
             testImplementation("org.apache.commons:commons-dbcp2")
             testImplementation("com.amazonaws:aws-java-sdk-rds")
             testImplementation("org.mockito:mockito-core")
@@ -199,6 +201,10 @@ allprojects {
             kotlinGradle {
                 ktlint()
                 trimTrailingWhitespace()
+                endWithNewline()
+            }
+            format("markdown") {
+                target("**/*.md")
                 endWithNewline()
             }
         }
@@ -288,7 +294,7 @@ allprojects {
             // Some of the projects might fail to create a file (e.g. no tests or no coverage),
             // So we check for file existence. Otherwise JacocoMerge would fail
             val execFiles =
-                files(testTasks, javaExecTasks).filter { it.exists() && it.name.endsWith(".exec") }
+                    files(testTasks, javaExecTasks).filter { it.exists() && it.name.endsWith(".exec") }
             executionData(execFiles)
         }
 
@@ -410,13 +416,13 @@ allprojects {
                     // targetExclude("**/test/java/*.java")
                     // TODO: implement license check (with copyright year)
                     // licenseHeaderFile(licenseHeaderFile)
-//                     importOrder(
-//                        "static ",
-//                        "org.postgresql.",
-//                        "",
-//                        "java.",
-//                        "javax."
-//                    )
+                    importOrder(
+                        "static ",
+                        "org.postgresql.",
+                        "",
+                        "java.",
+                        "javax."
+                    )
                     removeUnusedImports()
                     trimTrailingWhitespace()
                     indentWithSpaces(4)
@@ -473,8 +479,8 @@ allprojects {
             apply(plugin = "com.github.spotbugs")
             spotbugs {
                 toolVersion = "spotbugs".v
-                reportLevel = "low"
-                excludeFilter = file("$rootDir/config/spotbugs/spotbugs-filter.xml")
+                reportLevel = "high"
+                //  excludeFilter = file("$rootDir/src/main/config/spotbugs/spotbugs-filter.xml")
                 // By default spotbugs verifies TEST classes as well, and we do not want that
                 this.sourceSets = listOf(sourceSets["main"])
             }
@@ -527,6 +533,14 @@ allprojects {
                         includeTags.add(includeTestTags)
                     }
                 }
+                inputs.file("../build.properties")
+                if (file("../build.local.properties").exists()) {
+                    inputs.file("../build.local.properties")
+                }
+                inputs.file("../ssltest.properties")
+                if (file("../ssltest.local.properties").exists()) {
+                    inputs.file("../ssltest.local.properties")
+                }
                 testLogging {
                     showStandardStreams = true
                 }
@@ -551,19 +565,19 @@ allprojects {
                     }
                 }
                 for (p in listOf("server", "port", "database", "username", "password",
-                    "privilegedUser", "privilegedPassword",
-                    "simpleProtocolOnly", "enable_ssl_tests")) {
+                        "privilegedUser", "privilegedPassword",
+                        "simpleProtocolOnly", "enable_ssl_tests")) {
                     passProperty(p)
                 }
             }
             configureEach<SpotBugsTask> {
                 group = LifecycleBasePlugin.VERIFICATION_GROUP
                 if (enableSpotBugs) {
-                    description = "$description (skipped by default, to enable it add -Pspotbugs)"
+                    description = "$description (skipped by default, to enable it add -Dspotbugs)"
                 }
                 reports {
-                    html.isEnabled = !reportsForHumans()
-                    xml.isEnabled = reportsForHumans()
+                    html.isEnabled = reportsForHumans()
+                    xml.isEnabled = !reportsForHumans()
                 }
                 enabled = enableSpotBugs
             }
@@ -697,8 +711,13 @@ subprojects {
             }
             dependencies {
                 "sspiImplementation"("com.github.waffle:waffle-jna")
-                "osgiImplementation"("org.osgi:org.osgi.core")
-                "osgiImplementation"("org.osgi:org.osgi.enterprise")
+                // The dependencies are provided by OSGi container,
+                // so they should not be exposed as transitive dependencies
+                "osgiCompileOnly"("org.osgi:org.osgi.core")
+                "osgiCompileOnly"("org.osgi:org.osgi.service.jdbc")
+                "testImplementation"("org.osgi:org.osgi.service.jdbc") {
+                    because("DataSourceFactory is needed for PGDataSourceFactoryTest")
+                }
             }
         }
     }

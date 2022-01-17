@@ -70,6 +70,7 @@ public class Driver extends org.postgresql.Driver {
   private static @Nullable Driver registeredDriver;
   private static final Logger PARENT_LOGGER = Logger.getLogger(shadingPrefix("software.aws.rds.jdbc.postgresql"));
   private static final Logger LOGGER = Logger.getLogger(shadingPrefix("software.aws.rds.jdbc.postgresql.Driver"));
+  protected static final String DEFAULT_PORT = "5432";
 
   static {
     try {

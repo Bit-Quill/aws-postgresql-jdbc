@@ -181,7 +181,6 @@ val shadedLicenseFiles = licensesCopySpec(renderShadedLicense)
 // </editor-fold>
 
 tasks.configureEach<Jar> {
-    archiveBaseName.set("aws-postgresql-jdbc")
     manifest {
         attributes["Main-Class"] = "software.aws.rds.jdbc.postgresql.shading.org.postgresql.util.PGJDBCMain"
         attributes["Automatic-Module-Name"] = "org.postgresql.jdbc"
@@ -311,7 +310,6 @@ val hiddenImports = Regex("import org.checkerframework")
 
 val removeTypeAnnotations by tasks.registering(Sync::class) {
     destinationDir = withoutAnnotations
-    inputs.property("regexpsUpdatedOn", "2021-03-18")
     from(projectDir) {
         filteringCharset = `java.nio.charset`.StandardCharsets.UTF_8.name()
         filter { x: String ->
@@ -357,6 +355,7 @@ val sourceDistribution by tasks.registering(Tar::class) {
         "commons-dbcp2.version",
         "aws-java-sdk-rds.version",
         "mockito-core.version",
+        "junit5-system-stubs-jupiter.version",
         "classloader-leak-test-framework.version",
         "com.ongres.scram.client.version"
     ).associate { propertyName ->
@@ -432,3 +431,42 @@ val extraMavenPublications by configurations.getting
         classifier = "features"
     }
 }
+
+// <editor-fold defaultstate="collapsed" desc="Populates build/local-maven-repo with artifacts produced by the current project for testing purposes">
+val localRepoElements by configurations.creating {
+    isCanBeConsumed = true
+    isCanBeResolved = false
+    description =
+        "Shares local maven repository directory that contains the artifacts produced by the current project"
+    attributes {
+        attribute(Category.CATEGORY_ATTRIBUTE, objects.named("maven-repository"))
+        attribute(Bundling.BUNDLING_ATTRIBUTE, objects.named(Bundling.EXTERNAL))
+    }
+}
+
+val localRepoDir = layout.buildDirectory.dir("local-maven-repo")
+
+publishing {
+    repositories {
+        maven {
+            name = "local"
+            url = uri(localRepoDir)
+        }
+    }
+}
+
+localRepoElements.outgoing.artifact(localRepoDir) {
+    builtBy(tasks.named("publishAllPublicationsToLocalRepository"))
+}
+
+val cleanLocalRepository by tasks.registering(Delete::class) {
+    description = "Clears local-maven-repo so timestamp-based snapshot artifacts do not consume space"
+    delete(localRepoDir)
+}
+
+tasks.withType<PublishToMavenRepository>()
+    .matching { it.name.contains("ToLocalRepository") }
+    .configureEach {
+        dependsOn(cleanLocalRepository)
+    }
+// </editor-fold>

@@ -18,6 +18,7 @@ import org.postgresql.util.PSQLException;
 
 import org.checkerframework.checker.nullness.qual.Nullable;
 import org.junit.Assert;
+import org.junit.Assume;
 
 import java.io.Closeable;
 import java.io.File;
@@ -242,6 +243,8 @@ public class TestUtil {
     }
   }
 
+  private static boolean initialized = false;
+
   public static Properties loadPropertyFiles(String... names) {
     Properties p = new Properties();
     for (String name : names) {
@@ -266,17 +269,40 @@ public class TestUtil {
     return p;
   }
 
-  public static synchronized void initDriver() throws SQLException {
-    if (Driver.isRegistered()) {
-      return;
+  private static Properties sslTestProperties = null;
+
+  private static synchronized void initSslTestProperties() {
+    if (sslTestProperties == null) {
+      sslTestProperties = TestUtil.loadPropertyFiles("ssltest.properties");
     }
+  }
 
-    Driver.register();
+  private static String getSslTestProperty(String name) {
+    initSslTestProperties();
+    return sslTestProperties.getProperty(name);
+  }
 
-    Properties p = loadPropertyFiles("build.properties");
-    p.putAll(System.getProperties());
-    System.getProperties().putAll(p);
+  public static void assumeSslTestsEnabled() {
+    Assume.assumeTrue(Boolean.parseBoolean(getSslTestProperty("enable_ssl_tests")));
+  }
 
+  public static String getSslTestCertPath(String name) {
+    File certdir = TestUtil.getFile(getSslTestProperty("certdir"));
+    return new File(certdir, name).getAbsolutePath();
+  }
+
+  public static void initDriver() {
+    synchronized (TestUtil.class) {
+      if (initialized) {
+        return;
+      }
+
+      Properties p = loadPropertyFiles("build.properties");
+      p.putAll(System.getProperties());
+      System.getProperties().putAll(p);
+
+      initialized = true;
+    }
   }
 
   /**
@@ -311,8 +337,22 @@ public class TestUtil {
     PGProperty.GSS_ENC_MODE.set(properties,getGSSEncMode().value);
     properties.setProperty("user", getPrivilegedUser());
     properties.setProperty("password", getPrivilegedPassword());
+    properties.setProperty("options", "-c synchronous_commit=on");
     return DriverManager.getConnection(getURL(), properties);
 
+  }
+
+  public static Connection openReplicationConnection() throws Exception {
+    Properties properties = new Properties();
+    PGProperty.ASSUME_MIN_SERVER_VERSION.set(properties, "9.4");
+    PGProperty.PROTOCOL_VERSION.set(properties, "3");
+    PGProperty.REPLICATION.set(properties, "database");
+    //Only simple query protocol available for replication connection
+    PGProperty.PREFER_QUERY_MODE.set(properties, "simple");
+    properties.setProperty("username", TestUtil.getPrivilegedUser());
+    properties.setProperty("password", TestUtil.getPrivilegedPassword());
+    properties.setProperty("options", "-c synchronous_commit=on");
+    return TestUtil.openDB(properties);
   }
 
   /**
@@ -330,6 +370,7 @@ public class TestUtil {
    */
   public static Connection openDB(Properties props) throws SQLException {
     initDriver();
+
     // Allow properties to override the user name.
     String user = props.getProperty("username");
     if (user == null) {
@@ -472,16 +513,28 @@ public class TestUtil {
    */
   public static void createView(Connection con, String viewName, String query)
       throws SQLException {
-    Statement st = con.createStatement();
-    try {
+    try ( Statement st = con.createStatement() ) {
       // Drop the view
       dropView(con, viewName);
 
       String sql = "CREATE VIEW " + viewName + " AS " + query;
 
       st.executeUpdate(sql);
-    } finally {
-      closeQuietly(st);
+    }
+  }
+
+  /*
+   * Helper - creates a materialized view
+   */
+  public static void createMaterializedView(Connection con, String matViewName, String query)
+      throws SQLException {
+    try ( Statement st = con.createStatement() ) {
+      // Drop the view
+      dropMaterializedView(con, matViewName);
+
+      String sql = "CREATE MATERIALIZED VIEW " + matViewName + " AS " + query;
+
+      st.executeUpdate(sql);
     }
   }
 
@@ -586,6 +639,13 @@ public class TestUtil {
    */
   public static void dropView(Connection con, String view) throws SQLException {
     dropObject(con, "VIEW", view);
+  }
+
+  /*
+   * Helper - drops a materialized view
+   */
+  public static void dropMaterializedView(Connection con, String matView) throws SQLException {
+    dropObject(con, "MATERIALIZED VIEW", matView);
   }
 
   /*
@@ -727,6 +787,13 @@ public class TestUtil {
       return ((PgConnection) con).haveMinimumServerVersion(version);
     }
     return false;
+  }
+
+  public static void assumeHaveMinimumServerVersion(Version version)
+      throws SQLException {
+    try (Connection conn = openPrivilegedDB()) {
+      Assume.assumeTrue(TestUtil.haveMinimumServerVersion(conn, version));
+    }
   }
 
   public static boolean haveMinimumJVMVersion(String version) {
@@ -967,6 +1034,24 @@ public class TestUtil {
   }
 
   /**
+   * Execute a SQL query with a given connection, fetch the first row, and return its
+   * boolean value.
+   */
+  public static Boolean queryForBoolean(Connection conn, String sql) throws SQLException {
+    Statement stmt = conn.createStatement();
+    ResultSet rs = stmt.executeQuery(sql);
+    Assert.assertTrue("Query should have returned exactly one row but none was found: " + sql, rs.next());
+    Boolean value = rs.getBoolean(1);
+    if (rs.wasNull()) {
+      value = null;
+    }
+    Assert.assertFalse("Query should have returned exactly one row but more than one found: " + sql, rs.next());
+    rs.close();
+    stmt.close();
+    return value;
+  }
+
+  /**
    * Retrieve the backend process id for a given connection.
    */
   public static int getBackendPid(Connection conn) throws SQLException {
@@ -1080,15 +1165,8 @@ public class TestUtil {
   }
 
   public static void execute(String sql, Connection connection) throws SQLException {
-    Statement stmt = connection.createStatement();
-    try {
+    try (Statement stmt = connection.createStatement()) {
       stmt.execute(sql);
-    } finally {
-      try {
-        stmt.close();
-      } catch (SQLException e) {
-      }
     }
   }
-
 }

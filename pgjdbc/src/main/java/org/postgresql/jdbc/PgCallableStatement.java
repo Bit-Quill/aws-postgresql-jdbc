@@ -248,8 +248,7 @@ class PgCallableStatement extends PgPreparedStatement implements CallableStateme
     if (result == null) {
       return false;
     }
-
-    return (Boolean) result;
+    return BooleanTypeUtil.castToBoolean(result);
   }
 
   public byte getByte(@Positive int parameterIndex) throws SQLException {
@@ -452,7 +451,7 @@ class PgCallableStatement extends PgPreparedStatement implements CallableStateme
     }
 
     String value = result.toString();
-    return connection.getTimestampUtils().toDate(cal, value);
+    return getTimestampUtils().toDate(cal, value);
   }
 
   public @Nullable Time getTime(int i, java.util.@Nullable Calendar cal) throws SQLException {
@@ -463,7 +462,7 @@ class PgCallableStatement extends PgPreparedStatement implements CallableStateme
     }
 
     String value = result.toString();
-    return connection.getTimestampUtils().toTime(cal, value);
+    return getTimestampUtils().toTime(cal, value);
   }
 
   public @Nullable Timestamp getTimestamp(int i, java.util.@Nullable Calendar cal) throws SQLException {
@@ -474,7 +473,7 @@ class PgCallableStatement extends PgPreparedStatement implements CallableStateme
     }
 
     String value = result.toString();
-    return connection.getTimestampUtils().toTimestamp(cal, value);
+    return getTimestampUtils().toTimestamp(cal, value);
   }
 
   public void registerOutParameter(@Positive int parameterIndex, int sqlType, String typeName)

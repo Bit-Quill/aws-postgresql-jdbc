@@ -43,7 +43,7 @@ public class PGobject implements Serializable, Cloneable {
    * @param value a string representation of the value of the object
    * @throws SQLException thrown if value is invalid for this type
    */
-  public void setValue(String value) throws SQLException {
+  public void setValue(@Nullable String value) throws SQLException {
     this.value = value;
   }
 
@@ -53,11 +53,11 @@ public class PGobject implements Serializable, Cloneable {
    * @return the type name of this object
    */
   public final String getType() {
-    return castNonNull(type);
+    return castNonNull(type, "PGobject#type is uninitialized. Please call setType(String)");
   }
 
   /**
-   * This must be overidden, to return the value of the object, in the form required by
+   * This must be overridden, to return the value of the object, in the form required by
    * org.postgresql.
    *
    * @return the value of this object
@@ -67,7 +67,17 @@ public class PGobject implements Serializable, Cloneable {
   }
 
   /**
-   * This must be overidden to allow comparisons of objects.
+   * Returns true if the current object wraps `null` value.
+   * This might be helpful
+   *
+   * @return true if the current object wraps `null` value.
+   */
+  public boolean isNull() {
+    return getValue() != null;
+  }
+
+  /**
+   * This must be overridden to allow comparisons of objects.
    *
    * @param obj Object to compare with
    * @return true if the two boxes are identical
@@ -85,7 +95,7 @@ public class PGobject implements Serializable, Cloneable {
   }
 
   /**
-   * This must be overidden to allow the object to be cloned.
+   * This must be overridden to allow the object to be cloned.
    */
   public Object clone() throws CloneNotSupportedException {
     return super.clone();
