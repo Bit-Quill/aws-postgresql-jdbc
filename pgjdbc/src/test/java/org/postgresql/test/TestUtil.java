@@ -291,18 +291,17 @@ public class TestUtil {
     return new File(certdir, name).getAbsolutePath();
   }
 
-  public static void initDriver() {
-    synchronized (TestUtil.class) {
-      if (initialized) {
-        return;
-      }
-
-      Properties p = loadPropertyFiles("build.properties");
-      p.putAll(System.getProperties());
-      System.getProperties().putAll(p);
-
-      initialized = true;
+  public static void initDriver() throws SQLException {
+    if (Driver.isRegistered()) {
+      return;
     }
+
+    Driver.register();
+
+    Properties p = loadPropertyFiles("build.properties");
+    p.putAll(System.getProperties());
+    System.getProperties().putAll(p);
+
   }
 
   /**

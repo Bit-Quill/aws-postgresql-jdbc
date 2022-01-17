@@ -6,9 +6,10 @@
 
 package software.aws.rds.jdbc.postgresql.ca;
 
-import org.checkerframework.checker.nullness.qual.Nullable;
 import org.postgresql.core.BaseConnection;
 import org.postgresql.util.Util;
+
+import org.checkerframework.checker.nullness.qual.Nullable;
 
 import java.sql.SQLException;
 import java.util.ArrayList;

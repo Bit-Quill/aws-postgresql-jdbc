@@ -15,7 +15,7 @@ import org.postgresql.util.PSQLState;
 
 import org.checkerframework.checker.nullness.qual.Nullable;
 
-import java.awt.Point;
+import java.awt.*;
 import java.io.Serializable;
 import java.sql.SQLException;
 

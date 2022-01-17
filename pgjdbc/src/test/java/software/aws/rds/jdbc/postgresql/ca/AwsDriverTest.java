@@ -13,15 +13,15 @@ import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
-import software.aws.rds.jdbc.postgresql.Driver;
-
-import org.junit.Before;
-import org.junit.jupiter.api.Test;
 import org.postgresql.PGProperty;
 import org.postgresql.test.TestUtil;
 import org.postgresql.util.LogWriterHandler;
 import org.postgresql.util.NullOutputStream;
 import org.postgresql.util.URLCoder;
+
+import org.junit.Before;
+import org.junit.jupiter.api.Test;
+import software.aws.rds.jdbc.postgresql.Driver;
 
 import java.io.PrintWriter;
 import java.lang.reflect.Method;

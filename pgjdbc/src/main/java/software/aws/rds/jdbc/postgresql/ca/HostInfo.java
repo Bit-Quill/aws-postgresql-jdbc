@@ -6,10 +6,10 @@
 
 package software.aws.rds.jdbc.postgresql.ca;
 
-import software.aws.rds.jdbc.postgresql.Driver;
+import org.postgresql.util.HostSpec;
 
 import org.checkerframework.checker.nullness.qual.Nullable;
-import org.postgresql.util.HostSpec;
+import software.aws.rds.jdbc.postgresql.Driver;
 
 import java.util.Properties;
 

@@ -6,12 +6,13 @@
 
 package software.aws.rds.jdbc.postgresql.ca;
 
-import org.junit.jupiter.api.Assertions;
-import org.junit.jupiter.api.Disabled;
-import org.junit.jupiter.api.Test;
 import org.postgresql.Driver;
 import org.postgresql.PGProperty;
 import org.postgresql.util.PSQLException;
+
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Disabled;
+import org.junit.jupiter.api.Test;
 
 import java.sql.DriverManager;
 import java.sql.SQLException;

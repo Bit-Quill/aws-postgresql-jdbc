@@ -18,15 +18,15 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import software.aws.rds.jdbc.postgresql.Driver;
-
-import org.junit.jupiter.api.Test;
-import org.mockito.Mockito;
 import org.postgresql.PGProperty;
 import org.postgresql.core.BaseConnection;
 import org.postgresql.core.QueryExecutor;
 import org.postgresql.core.TransactionState;
 import org.postgresql.util.HostSpec;
+
+import org.junit.jupiter.api.Test;
+import org.mockito.Mockito;
+import software.aws.rds.jdbc.postgresql.Driver;
 
 import java.sql.SQLException;
 import java.util.ArrayList;

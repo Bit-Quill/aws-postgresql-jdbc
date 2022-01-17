@@ -20,6 +20,7 @@ import org.postgresql.util.LogWriterHandler;
 import org.postgresql.util.NullOutputStream;
 import org.postgresql.util.URLCoder;
 
+import org.junit.Before;
 import org.junit.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import uk.org.webcompere.systemstubs.environment.EnvironmentVariables;
@@ -34,10 +35,6 @@ import java.lang.reflect.Method;
 import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import org.junit.Before;
-
-import java.io.PrintWriter;
-import java.lang.reflect.Method;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;

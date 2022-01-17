@@ -14,9 +14,6 @@ import org.postgresql.util.ExpressionProperties;
 import org.postgresql.util.GT;
 import org.postgresql.util.HostSpec;
 import org.postgresql.util.LogWriterHandler;
-import org.postgresql.util.PGPropertyPasswordParser;
-import org.postgresql.util.PGPropertyServiceParser;
-import org.postgresql.util.PGPropertyUtil;
 import org.postgresql.util.PSQLException;
 import org.postgresql.util.PSQLState;
 import org.postgresql.util.SharedTimer;
@@ -40,7 +37,6 @@ import java.util.Enumeration;
 import java.util.Properties;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
-import java.util.logging.ConsoleHandler;
 import java.util.logging.Formatter;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -70,22 +66,11 @@ public class Driver implements java.sql.Driver {
   private static final Logger PARENT_LOGGER = Logger.getLogger(shadingPrefix("org.postgresql"));
   private static final Logger LOGGER = Logger.getLogger(shadingPrefix("org.postgresql.Driver"));
   protected static final SharedTimer SHARED_TIMER = new SharedTimer();
-
-  static {
-    try {
-      // moved the registerDriver from the constructor to here
-      // because some clients call the driver themselves (I know, as
-      // my early jdbc work did - and that was based on other examples).
-      // Placing it here, means that the driver is registered once only.
-      register();
-    } catch (SQLException e) {
-      throw new ExceptionInInitializerError(e);
-    }
-  }
+  protected static final String DEFAULT_PORT = "5432";
 
   // Helper to retrieve default properties from classloader resource
   // properties files.
-  private @Nullable Properties defaultProperties;
+  protected @Nullable Properties defaultProperties;
 
   protected synchronized Properties getDefaultProperties() throws IOException {
     if (defaultProperties != null) {
@@ -347,7 +332,7 @@ public class Driver implements java.sql.Driver {
       } else if ( DriverManager.getLogStream() != null) {
         handler = new StreamHandler(DriverManager.getLogStream(), formatter);
       } else {
-        handler = new ConsoleHandler();
+        handler = new StreamHandler(System.err, formatter);
       }
     } else {
       handler.setFormatter(formatter);
@@ -554,15 +539,7 @@ public class Driver implements java.sql.Driver {
    * @return Properties with elements added from the url
    */
   public static @Nullable Properties parseURL(String url, @Nullable Properties defaults) {
-    // priority 1 - URL values
-    Properties priority1Url = new Properties();
-    // priority 2 - Properties given as argument to DriverManager.getConnection()
-    // argument "defaults" EXCLUDING defaults
-    // priority 3 - Values retrieved by "service"
-    Properties priority3Service = new Properties();
-    // priority 4 - Properties loaded by Driver.loadDefaultProperties() (user, org/postgresql/driverconfig.properties)
-    // argument "defaults" INCLUDING defaults
-    // priority 5 - PGProperty defaults for PGHOST, PGPORT, PGDBNAME
+    Properties urlProps = new Properties(defaults);
 
     String urlServer = url;
     String urlArgs = "";
@@ -579,45 +556,36 @@ public class Driver implements java.sql.Driver {
     }
     urlServer = urlServer.substring("jdbc:postgresql:".length());
 
-    if (urlServer.equals("//") || urlServer.equals("///")) {
-      urlServer = "";
-    } else if (urlServer.startsWith("//")) {
+    if (urlServer.startsWith("//")) {
       urlServer = urlServer.substring(2);
-      long slashCount = urlServer.chars().filter(ch -> ch == '/').count();
-      if (slashCount > 1) {
-        LOGGER.log(Level.WARNING, "JDBC URL contains too many / characters: {0}", url);
-        return null;
-      }
       int slash = urlServer.indexOf('/');
       if (slash == -1) {
         LOGGER.log(Level.WARNING, "JDBC URL must contain a / at the end of the host or port: {0}", url);
         return null;
       }
-      if (!urlServer.endsWith("/")) {
-        String value = urlDecode(urlServer.substring(slash + 1));
-        if (value == null) {
-          return null;
-        }
-        PGProperty.PG_DBNAME.set(priority1Url, value);
-      }
-      urlServer = urlServer.substring(0, slash);
+      urlProps.setProperty("PGDBNAME", URLCoder.decode(urlServer.substring(slash + 1)));
 
-      String[] addresses = urlServer.split(",");
+      String[] addresses = urlServer.substring(0, slash).split(",");
       StringBuilder hosts = new StringBuilder();
       StringBuilder ports = new StringBuilder();
       for (String address : addresses) {
         int portIdx = address.lastIndexOf(':');
         if (portIdx != -1 && address.lastIndexOf(']') < portIdx) {
           String portStr = address.substring(portIdx + 1);
-          ports.append(portStr);
-          CharSequence hostStr = address.subSequence(0, portIdx);
-          if (hostStr.length() == 0) {
-            hosts.append(PGProperty.PG_HOST.getDefaultValue());
-          } else {
-            hosts.append(hostStr);
+          try {
+            int port = Integer.parseInt(portStr);
+            if (port < 1 || port > 65535) {
+              LOGGER.log(Level.WARNING, "JDBC URL port: {0} not valid (1:65535) ", portStr);
+              return null;
+            }
+          } catch (NumberFormatException ignore) {
+            LOGGER.log(Level.WARNING, "JDBC URL invalid port number: {0}", portStr);
+            return null;
           }
+          ports.append(portStr);
+          hosts.append(address.subSequence(0, portIdx));
         } else {
-          ports.append(PGProperty.PG_PORT.getDefaultValue());
+          ports.append(DEFAULT_PORT);
           hosts.append(address);
         }
         ports.append(',');
@@ -625,98 +593,39 @@ public class Driver implements java.sql.Driver {
       }
       ports.setLength(ports.length() - 1);
       hosts.setLength(hosts.length() - 1);
-      PGProperty.PG_HOST.set(priority1Url, hosts.toString());
-      PGProperty.PG_PORT.set(priority1Url, ports.toString());
-    } else if (urlServer.startsWith("/")) {
-      return null;
+      urlProps.setProperty("PGPORT", ports.toString());
+      urlProps.setProperty("PGHOST", hosts.toString());
     } else {
-      String value = urlDecode(urlServer);
-      if (value == null) {
-        return null;
+      /*
+       if there are no defaults set or any one of PORT, HOST, DBNAME not set
+       then set it to default
+      */
+      if (defaults == null || !defaults.containsKey("PGPORT")) {
+        urlProps.setProperty("PGPORT", DEFAULT_PORT);
       }
-      priority1Url.setProperty(PGProperty.PG_DBNAME.getName(), value);
+      if (defaults == null || !defaults.containsKey("PGHOST")) {
+        urlProps.setProperty("PGHOST", "localhost");
+      }
+      if (defaults == null || !defaults.containsKey("PGDBNAME")) {
+        urlProps.setProperty("PGDBNAME", URLCoder.decode(urlServer));
+      }
     }
 
     // parse the args part of the url
     String[] args = urlArgs.split("&");
-    String serviceName = null;
     for (String token : args) {
       if (token.isEmpty()) {
         continue;
       }
       int pos = token.indexOf('=');
       if (pos == -1) {
-        priority1Url.setProperty(token, "");
+        urlProps.setProperty(token, "");
       } else {
-        String pName = PGPropertyUtil.translatePGServiceToPGProperty(token.substring(0, pos));
-        String pValue = urlDecode(token.substring(pos + 1));
-        if (pValue == null) {
-          return null;
-        }
-        if (PGProperty.SERVICE.getName().equals(pName)) {
-          serviceName = pValue;
-        } else {
-          priority1Url.setProperty(pName, pValue);
-        }
+        urlProps.setProperty(token.substring(0, pos), URLCoder.decode(token.substring(pos + 1)));
       }
     }
 
-    // load pg_service.conf
-    if (serviceName != null) {
-      LOGGER.log(Level.FINE, "Processing option [?service={0}]", serviceName);
-      Properties result = PGPropertyServiceParser.getServiceProperties(serviceName);
-      if (result == null) {
-        LOGGER.log(Level.WARNING, "Definition of service [{0}] not found", serviceName);
-        return null;
-      }
-      priority3Service.putAll(result);
-    }
-
-    // combine result based on order of priority
-    Properties result = new Properties();
-    result.putAll(priority1Url);
-    if (defaults != null) {
-      // priority 2 - forEach() returns all entries EXCEPT defaults
-      defaults.forEach(result::putIfAbsent);
-    }
-    priority3Service.forEach(result::putIfAbsent);
-    if (defaults != null) {
-      // priority 4 - stringPropertyNames() returns all entries INCLUDING defaults
-      defaults.stringPropertyNames().forEach(s -> result.putIfAbsent(s, castNonNull(defaults.getProperty(s))));
-    }
-    // priority 5 - PGProperty defaults for PGHOST, PGPORT, PGDBNAME
-    result.putIfAbsent(PGProperty.PG_PORT.getName(), castNonNull(PGProperty.PG_PORT.getDefaultValue()));
-    result.putIfAbsent(PGProperty.PG_HOST.getName(), castNonNull(PGProperty.PG_HOST.getDefaultValue()));
-    if (PGProperty.USER.get(result) != null) {
-      result.putIfAbsent(PGProperty.PG_DBNAME.getName(), castNonNull(PGProperty.USER.get(result)));
-    }
-
-    // consistency check
-    if (!PGPropertyUtil.propertiesConsistencyCheck(result)) {
-      return null;
-    }
-
-    // try to load .pgpass if password is missing
-    if (PGProperty.PASSWORD.get(result) == null) {
-      String password = PGPropertyPasswordParser.getPassword(
-          PGProperty.PG_HOST.get(result), PGProperty.PG_PORT.get(result), PGProperty.PG_DBNAME.get(result), PGProperty.USER.get(result)
-      );
-      if (password != null && !password.isEmpty()) {
-        PGProperty.PASSWORD.set(result, password);
-      }
-    }
-    //
-    return result;
-  }
-
-  // decode url, on failure log and return null
-  private static @Nullable String urlDecode(String url) {
-    try {
-      return URLCoder.decode(url);
-    } catch (IllegalArgumentException e) {
-      LOGGER.log(Level.FINE, "Url [{0}] parsing failed with error [{1}]", new Object[]{url, e.getMessage()});
-    }
-    return null;
+    return urlProps;
   }
 
   /**

@@ -14,10 +14,6 @@ package software.aws.rds.jdbc.postgresql;
 import static org.postgresql.util.Util.shadingPrefix;
 import static org.postgresql.util.internal.Nullness.castNonNull;
 
-import software.aws.rds.jdbc.postgresql.ca.ClusterAwareConnectionProxy;
-
-import org.checkerframework.checker.nullness.qual.NonNull;
-import org.checkerframework.checker.nullness.qual.Nullable;
 import org.postgresql.PGProperty;
 import org.postgresql.util.ExpressionProperties;
 import org.postgresql.util.GT;
@@ -27,6 +23,10 @@ import org.postgresql.util.PSQLException;
 import org.postgresql.util.PSQLState;
 import org.postgresql.util.SharedTimer;
 import org.postgresql.util.URLCoder;
+
+import org.checkerframework.checker.nullness.qual.NonNull;
+import org.checkerframework.checker.nullness.qual.Nullable;
+import software.aws.rds.jdbc.postgresql.ca.ClusterAwareConnectionProxy;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -70,7 +70,6 @@ public class Driver extends org.postgresql.Driver {
   private static @Nullable Driver registeredDriver;
   private static final Logger PARENT_LOGGER = Logger.getLogger(shadingPrefix("software.aws.rds.jdbc.postgresql"));
   private static final Logger LOGGER = Logger.getLogger(shadingPrefix("software.aws.rds.jdbc.postgresql.Driver"));
-  protected static final String DEFAULT_PORT = "5432";
 
   static {
     try {
