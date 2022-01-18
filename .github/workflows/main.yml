@@ -140,7 +140,7 @@ jobs:
       run: |
         docker-compose down -v --rmi local || true
         sed -i -r '/- (543[3-4]):\1/d' docker-compose.yml
-        docker-compose up -d
+        PGV=13.4 docker-compose up -d
         docker-compose logs
     - name: 'Get test node ARCH'
       run: echo "::set-output name=arch_name::$(uname -i)"
