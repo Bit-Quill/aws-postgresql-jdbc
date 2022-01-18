@@ -21,12 +21,11 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import org.postgresql.core.BaseConnection;
-import org.postgresql.util.HostSpec;
-
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 import org.mockito.stubbing.Answer;
+import org.postgresql.core.BaseConnection;
+import org.postgresql.util.HostSpec;
 
 import java.sql.SQLException;
 import java.util.ArrayList;

@@ -6,11 +6,11 @@
 
 package software.aws.rds.jdbc.postgresql.ca;
 
-import org.postgresql.util.ExpiringCache;
+import software.aws.rds.jdbc.postgresql.ca.metrics.ClusterAwareMetrics;
 
 import org.checkerframework.checker.nullness.qual.MonotonicNonNull;
 import org.checkerframework.checker.nullness.qual.Nullable;
-import software.aws.rds.jdbc.postgresql.ca.metrics.ClusterAwareMetrics;
+import org.postgresql.util.ExpiringCache;
 
 import java.sql.Connection;
 import java.sql.ResultSet;

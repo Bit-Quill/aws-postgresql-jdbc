@@ -6,6 +6,13 @@
 
 package software.aws.rds.jdbc.postgresql.ca;
 
+import software.aws.rds.jdbc.postgresql.ca.metrics.ClusterAwareMetrics;
+
+import org.checkerframework.checker.initialization.qual.UnderInitialization;
+import org.checkerframework.checker.initialization.qual.UnknownInitialization;
+import org.checkerframework.checker.nullness.qual.EnsuresNonNull;
+import org.checkerframework.checker.nullness.qual.Nullable;
+import org.checkerframework.checker.nullness.qual.RequiresNonNull;
 import org.postgresql.PGProperty;
 import org.postgresql.core.BaseConnection;
 import org.postgresql.core.TransactionState;
@@ -14,13 +21,6 @@ import org.postgresql.util.IpAddressUtils;
 import org.postgresql.util.PSQLException;
 import org.postgresql.util.PSQLState;
 import org.postgresql.util.Util;
-
-import org.checkerframework.checker.initialization.qual.UnderInitialization;
-import org.checkerframework.checker.initialization.qual.UnknownInitialization;
-import org.checkerframework.checker.nullness.qual.EnsuresNonNull;
-import org.checkerframework.checker.nullness.qual.Nullable;
-import org.checkerframework.checker.nullness.qual.RequiresNonNull;
-import software.aws.rds.jdbc.postgresql.ca.metrics.ClusterAwareMetrics;
 
 import java.io.IOException;
 import java.lang.reflect.InvocationHandler;

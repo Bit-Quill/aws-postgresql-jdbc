@@ -17,13 +17,12 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import org.postgresql.core.BaseConnection;
-
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentMatchers;
 import org.mockito.InOrder;
 import org.mockito.Mockito;
 import org.mockito.stubbing.Answer;
+import org.postgresql.core.BaseConnection;
 
 import java.sql.Connection;
 import java.sql.SQLException;

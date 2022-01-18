@@ -416,13 +416,13 @@ allprojects {
                     // targetExclude("**/test/java/*.java")
                     // TODO: implement license check (with copyright year)
                     // licenseHeaderFile(licenseHeaderFile)
-                    importOrder(
-                        "static ",
-                        "org.postgresql.",
-                        "",
-                        "java.",
-                        "javax."
-                    )
+                    // importOrder(
+                    //     "static ",
+                    //     "org.postgresql.",
+                    //     "",
+                    //     "java.",
+                    //     "javax."
+                    // )
                     removeUnusedImports()
                     trimTrailingWhitespace()
                     indentWithSpaces(4)

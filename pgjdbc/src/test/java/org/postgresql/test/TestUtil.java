@@ -292,16 +292,21 @@ public class TestUtil {
   }
 
   public static void initDriver() throws SQLException {
-    if (Driver.isRegistered()) {
-      return;
+    if (!Driver.isRegistered()) {
+      Driver.register();
     }
 
-    Driver.register();
+    synchronized (TestUtil.class) {
+      if (initialized) {
+        return;
+      }
 
-    Properties p = loadPropertyFiles("build.properties");
-    p.putAll(System.getProperties());
-    System.getProperties().putAll(p);
+      Properties p = loadPropertyFiles("build.properties");
+      p.putAll(System.getProperties());
+      System.getProperties().putAll(p);
 
+      initialized = true;
+    }
   }
 
   /**

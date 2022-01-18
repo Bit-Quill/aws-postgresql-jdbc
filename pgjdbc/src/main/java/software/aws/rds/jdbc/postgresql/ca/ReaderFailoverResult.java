@@ -6,9 +6,8 @@
 
 package software.aws.rds.jdbc.postgresql.ca;
 
-import org.postgresql.core.BaseConnection;
-
 import org.checkerframework.checker.nullness.qual.Nullable;
+import org.postgresql.core.BaseConnection;
 
 /** This class holds results of Reader Failover Process. */
 public class ReaderFailoverResult {
