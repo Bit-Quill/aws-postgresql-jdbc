@@ -295,7 +295,7 @@ public class FailoverSampleApp2 {
 
 ### AWS IAM Database Authentication
 
-The driver supports Amazon AWS Identity and Access Management (IAM) authentication. When using AWS IAM database authentication, host URL must be a valid Amazon endpoint, and not a custom domain or an IP address (for example, `database-pg-name.cluster-XYZ.us-east-2.rds.amazonaws.com`).
+The driver supports Amazon AWS Identity and Access Management (IAM) authentication. When using AWS IAM database authentication, host URL must be a valid Amazon endpoint, and not a custom domain or an IP address (for example, `database-postgresql-name.cluster-XYZ.us-east-2.rds.amazonaws.com`).
 
 AWS IAM database authentication is limited to certain database engines. 
 For more information on limitations and recommendations, please refer to [IAM database authentication for MySQL and PostgreSQL](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/UsingWithRDS.IAMDBAuth.html).
@@ -330,7 +330,7 @@ import software.aws.rds.jdbc.postgresql.Driver;
 import org.postgresql.core.v3.plugins.AwsIamAuthenticationPlugin;
 
 public class AwsIamAuthenticationSample {
-  private static final String CONNECTION_STRING = "jdbc:postgresql:aws://database-pg-name.cluster-XYZ.us-east-2.rds.amazonaws.com:5432/postgres";
+  private static final String CONNECTION_STRING = "jdbc:postgresql:aws://database-postgresql-name.cluster-XYZ.us-east-2.rds.amazonaws.com:5432/postgres";
   private static final String USER = "example_user_name";
 
   public static void main(String[] args) throws SQLException {
