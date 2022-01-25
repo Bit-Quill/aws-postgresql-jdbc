@@ -280,7 +280,7 @@ public class TypeInfoCache implements TypeInfo {
         pgNameToSQLType.put(typeName, type);
       }
 
-      Integer typeOid = castNonNull(rs.getInt("oid"));
+      Integer typeOid = longOidToInt(castNonNull(rs.getLong("oid")));
       if (!oidToSQLType.containsKey(typeOid)) {
         oidToSQLType.put(typeOid, type);
       }
@@ -298,7 +298,25 @@ public class TypeInfoCache implements TypeInfo {
   }
 
   public synchronized int getSQLType(String pgTypeName) throws SQLException {
-    return getSQLType(castNonNull(getPGType(pgTypeName)));
+    /*
+    Get a few things out of the way such as arrays and known types
+     */
+    if (pgTypeName.endsWith("[]")) {
+      return Types.ARRAY;
+    }
+    Integer i = this.pgNameToSQLType.get(pgTypeName);
+    if (i != null) {
+      return i;
+    }
+
+    /*
+      All else fails then we will query the database.
+      save for future calls
+    */
+    i = getSQLType(castNonNull(getPGType(pgTypeName)));
+
+    pgNameToSQLType.put(pgTypeName, i);
+    return i;
   }
 
   public synchronized int getSQLType(int typeOid) throws SQLException {
@@ -311,11 +329,11 @@ public class TypeInfoCache implements TypeInfo {
       return i;
     }
 
-    LOGGER.log(Level.FINEST, "querying SQL typecode for pg type oid '{0}'", typeOid);
+    LOGGER.log(Level.FINEST, "querying SQL typecode for pg type oid '{0}'", intOidToLong(typeOid));
 
     PreparedStatement getTypeInfoStatement = prepareGetTypeInfoStatement();
 
-    getTypeInfoStatement.setInt(1, typeOid);
+    getTypeInfoStatement.setLong(1, intOidToLong(typeOid));
 
     // Go through BaseStatement to avoid transaction start.
     if (!((BaseStatement) getTypeInfoStatement)
@@ -442,6 +460,11 @@ public class TypeInfoCache implements TypeInfo {
   }
 
   public synchronized int getPGType(String pgTypeName) throws SQLException {
+    // there really isn't anything else to return other than UNSPECIFIED here.
+    if ( pgTypeName == null ) {
+      return Oid.UNSPECIFIED;
+    }
+
     Integer oid = pgNameToOid.get(pgTypeName);
     if (oid != null) {
       return oid;
@@ -527,7 +550,7 @@ public class TypeInfoCache implements TypeInfo {
     return getNameStatement;
   }
 
-  public int getPGArrayType(String elementTypeName) throws SQLException {
+  public int getPGArrayType(@Nullable String elementTypeName) throws SQLException {
     elementTypeName = getTypeForAlias(elementTypeName);
     return getPGType(elementTypeName + "[]");
   }
@@ -679,7 +702,10 @@ public class TypeInfoCache implements TypeInfo {
     return result == null ? "java.lang.String" : result;
   }
 
-  public String getTypeForAlias(String alias) {
+  public @Nullable String getTypeForAlias(@Nullable String alias) {
+    if ( alias == null ) {
+      return null;
+    }
     String type = TYPE_ALIASES.get(alias);
     if (type != null) {
       return type;
@@ -973,5 +999,19 @@ public class TypeInfoCache implements TypeInfo {
         return false;
     }
     return true;
+  }
+
+  @Override
+  public int longOidToInt(long oid) throws SQLException {
+    if ((oid & 0xFFFF_FFFF_0000_0000L) != 0) {
+      throw new PSQLException(GT.tr("Value is not an OID: {0}", oid), PSQLState.NUMERIC_VALUE_OUT_OF_RANGE);
+    }
+
+    return (int) oid;
+  }
+
+  @Override
+  public long intOidToLong(int oid) {
+    return ((long) oid) & 0xFFFFFFFFL;
   }
 }

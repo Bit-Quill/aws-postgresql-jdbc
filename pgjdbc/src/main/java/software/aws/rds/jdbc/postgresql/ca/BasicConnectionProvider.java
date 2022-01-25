@@ -34,9 +34,9 @@ public class BasicConnectionProvider implements ConnectionProvider {
   @Override
   public BaseConnection connect(HostSpec hostSpec, Properties props, @Nullable String url) throws SQLException {
     if (url == null) {
-      return new PgConnection(new HostSpec[] { hostSpec }, user(props), database(props), props, "");
+      return new PgConnection(new HostSpec[] { hostSpec }, props, "");
     } else {
-      return new PgConnection(new HostSpec[] { hostSpec }, user(props), database(props), props, url);
+      return new PgConnection(new HostSpec[] { hostSpec }, props, url);
     }
   }
 

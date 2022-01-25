@@ -7,16 +7,17 @@ package org.postgresql.test.jdbc2;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
 
 import org.postgresql.core.Encoding;
+import org.postgresql.test.SlowTests;
 import org.postgresql.test.TestUtil;
 
 import org.junit.After;
+import org.junit.Assume;
 import org.junit.Before;
 import org.junit.Test;
+import org.junit.experimental.categories.Category;
 
-import java.io.IOException;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -39,7 +40,7 @@ public class DatabaseEncodingTest {
   @Before
   public void setUp() throws Exception {
     con = TestUtil.openDB();
-    TestUtil.createTable(con, "testdbencoding",
+    TestUtil.createTempTable(con, "testdbencoding",
         "unicode_ordinal integer primary key not null, unicode_string varchar(" + STEP + ")");
     // disabling auto commit makes the test run faster
     // by not committing each insert individually.
@@ -50,7 +51,6 @@ public class DatabaseEncodingTest {
   @After
   public void tearDown() throws Exception {
     con.setAutoCommit(true);
-    TestUtil.dropTable(con, "testdbencoding");
     TestUtil.closeDB(con);
   }
 
@@ -68,22 +68,10 @@ public class DatabaseEncodingTest {
   }
 
   @Test
+  @Category(SlowTests.class)
   public void testEncoding() throws Exception {
-    // Check that we have a UTF8 server encoding, or we must skip this test.
-    Statement stmt = con.createStatement();
-    ResultSet rs = stmt.executeQuery("SELECT getdatabaseencoding()");
-    assertTrue(rs.next());
-
-    String dbEncoding = rs.getString(1);
-    if (!dbEncoding.equals("UTF8")) {
-      System.err.println(
-          "DatabaseEncodingTest: Skipping UTF8 database tests as test database encoding is "
-              + dbEncoding);
-      rs.close();
-      return; // not a UTF8 database.
-    }
-
-    rs.close();
+    String databaseEncoding = TestUtil.queryForString(con, "SELECT getdatabaseencoding()");
+    Assume.assumeTrue("Database encoding must be UTF8", databaseEncoding.equals("UTF8"));
 
     boolean testHighUnicode = true;
 
@@ -142,8 +130,9 @@ public class DatabaseEncodingTest {
     con.commit();
 
     // Check data.
+    Statement stmt = con.createStatement();
     stmt.setFetchSize(1);
-    rs = stmt.executeQuery(
+    ResultSet rs = stmt.executeQuery(
         "SELECT unicode_ordinal, unicode_string FROM testdbencoding ORDER BY unicode_ordinal");
     for (int i = 1; i < 0xd800; i += STEP) {
       assertTrue(rs.next());
@@ -227,67 +216,9 @@ public class DatabaseEncodingTest {
     }
   }
 
-  @Test
-  public void testBadUTF8Decode() throws Exception {
-    Encoding utf8Encoding = Encoding.getJVMEncoding("UTF-8");
-
-    byte[][] badSequences = new byte[][]{
-        // One-byte illegal sequences
-        {(byte) 0x80}, // First byte may not be 10xxxxxx
-
-        // Two-byte illegal sequences
-        {(byte) 0xc0, (byte) 0x00}, // Second byte must be 10xxxxxx
-        {(byte) 0xc0, (byte) 0x80}, // Can't represent a value < 0x80
-
-        // Three-byte illegal sequences
-        {(byte) 0xe0, (byte) 0x00}, // Second byte must be 10xxxxxx
-        {(byte) 0xe0, (byte) 0x80, (byte) 0x00}, // Third byte must be 10xxxxxx
-        {(byte) 0xe0, (byte) 0x80, (byte) 0x80}, // Can't represent a value < 0x800
-        {(byte) 0xed, (byte) 0xa0, (byte) 0x80}, // Not allowed to encode the range d800..dfff
-
-        // Four-byte illegal sequences
-        {(byte) 0xf0, (byte) 0x00}, // Second byte must be 10xxxxxx
-        {(byte) 0xf0, (byte) 0x80, (byte) 0x00}, // Third byte must be 10xxxxxx
-        {(byte) 0xf0, (byte) 0x80, (byte) 0x80, (byte) 0x00}, // Fourth byte must be 10xxxxxx
-        {(byte) 0xf0, (byte) 0x80, (byte) 0x80, (byte) 0x80}, // Can't represent a value < 0x10000
-
-        // Five-byte illegal sequences
-        {(byte) 0xf8}, // Can't have a five-byte sequence.
-
-        // Six-byte illegal sequences
-        {(byte) 0xfc}, // Can't have a six-byte sequence.
-
-        // Seven-byte illegal sequences
-        {(byte) 0xfe}, // Can't have a seven-byte sequence.
-
-        // Eighth-byte illegal sequences
-        {(byte) 0xff}, // Can't have an eight-byte sequence.
-    };
-
-    byte[] paddedSequence = new byte[32];
-    for (int i = 0; i < badSequences.length; ++i) {
-      byte[] sequence = badSequences[i];
-
-      try {
-        String str = utf8Encoding.decode(sequence, 0, sequence.length);
-        fail("Expected an IOException on sequence " + i + ", but decoded to <" + str + ">");
-      } catch (IOException ioe) {
-        // Expected exception.
-      }
-
-      // Try it with padding.
-      Arrays.fill(paddedSequence, (byte) 0);
-      System.arraycopy(sequence, 0, paddedSequence, 0, sequence.length);
-
-      try {
-        String str = utf8Encoding.decode(paddedSequence, 0, paddedSequence.length);
-        fail("Expected an IOException on sequence " + i + ", but decoded to <" + str + ">");
-      } catch (IOException ioe) {
-        // Expected exception.
-      }
-    }
-  }
-
+  /**
+   * Tests that invalid utf-8 values are replaced with the unicode replacement chart.
+   */
   @Test
   public void testTruncatedUTF8Decode() throws Exception {
     Encoding utf8Encoding = Encoding.getJVMEncoding("UTF-8");
@@ -305,24 +236,20 @@ public class DatabaseEncodingTest {
     byte[] paddedSequence = new byte[32];
     for (int i = 0; i < shortSequences.length; ++i) {
       byte[] sequence = shortSequences[i];
-
-      try {
-        String str = utf8Encoding.decode(sequence, 0, sequence.length);
-        fail("Expected an IOException on sequence " + i + ", but decoded to <" + str + ">");
-      } catch (IOException ioe) {
-        // Expected exception.
+      String expected = "\uFFFD";
+      for (int j = 1; j < sequence.length; ++j) {
+        expected += "\uFFFD";
       }
+
+      String str = utf8Encoding.decode(sequence, 0, sequence.length);
+      assertEquals("itr:" + i, expected, str);
 
       // Try it with padding and a truncated length.
       Arrays.fill(paddedSequence, (byte) 0);
       System.arraycopy(sequence, 0, paddedSequence, 0, sequence.length);
 
-      try {
-        String str = utf8Encoding.decode(paddedSequence, 0, sequence.length);
-        fail("Expected an IOException on sequence " + i + ", but decoded to <" + str + ">");
-      } catch (IOException ioe) {
-        // Expected exception.
-      }
+      str = utf8Encoding.decode(paddedSequence, 0, sequence.length);
+      assertEquals("itr:" + i, expected, str);
     }
   }
 }

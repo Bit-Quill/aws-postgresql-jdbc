@@ -14,6 +14,7 @@ import org.postgresql.core.BaseStatement;
 import org.postgresql.core.CachedQuery;
 import org.postgresql.core.Field;
 import org.postgresql.core.ParameterList;
+import org.postgresql.core.Provider;
 import org.postgresql.core.Query;
 import org.postgresql.core.QueryExecutor;
 import org.postgresql.core.ResultCursor;
@@ -36,6 +37,7 @@ import java.sql.SQLWarning;
 import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.TimeZone;
 import java.util.TimerTask;
 import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
 import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
@@ -147,6 +149,8 @@ public class PgStatement implements Statement, BaseStatement {
   protected int maxFieldSize = 0;
 
   protected boolean adaptiveFetch = false;
+
+  private @Nullable TimestampUtils timestampUtils; // our own Object because it's not thread safe
 
   @SuppressWarnings("method.invocation.invalid")
   PgStatement(PgConnection c, int rsType, int rsConcurrency, int rsHoldability)
@@ -437,11 +441,13 @@ public class PgStatement implements Statement, BaseStatement {
       }
     }
 
+    // Only use named statements after we hit the threshold. Note that only
+    // named statements can be transferred in binary format.
+    // isOneShotQuery will check to see if we have hith the prepareThreshold count
+
     if (isOneShotQuery(cachedQuery)) {
       flags |= QueryExecutor.QUERY_ONESHOT;
     }
-    // Only use named statements after we hit the threshold. Note that only
-    // named statements can be transferred in binary format.
 
     if (connection.getAutoCommit()) {
       flags |= QueryExecutor.QUERY_SUPPRESS_BEGIN;
@@ -1293,4 +1299,10 @@ public class PgStatement implements Statement, BaseStatement {
     return adaptiveFetch;
   }
 
+  protected TimestampUtils getTimestampUtils() {
+    if (timestampUtils == null) {
+      timestampUtils = new TimestampUtils(! connection.getQueryExecutor().getIntegerDateTimes(), (Provider<TimeZone>) new QueryExecutorTimeZoneProvider(connection.getQueryExecutor()));
+    }
+    return timestampUtils;
+  }
 }

@@ -17,6 +17,7 @@ import java.io.IOException;
 import java.net.InetAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.net.UnknownHostException;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
@@ -86,7 +87,13 @@ public class LoginTimeoutTest {
 
   private static class TimeoutHelper implements Runnable {
     TimeoutHelper() throws IOException {
-      InetAddress localAddr = InetAddress.getLoopbackAddress();
+      InetAddress localAddr;
+      try {
+        localAddr = InetAddress.getLocalHost();
+      } catch (UnknownHostException ex) {
+        System.err.println("WARNING: Could not resolve local host name, trying 'localhost'. " + ex);
+        localAddr = InetAddress.getByName("localhost");
+      }
       this.listenSocket = new ServerSocket(0, 1, localAddr);
     }
 

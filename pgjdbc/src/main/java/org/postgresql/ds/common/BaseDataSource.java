@@ -380,6 +380,22 @@ public abstract class BaseDataSource implements CommonDataSource, Referenceable 
   }
 
   /**
+   * @return quoteReturningIdentifiers
+   * @see PGProperty#QUOTE_RETURNING_IDENTIFIERS
+   */
+  public boolean getQuoteReturningIdentifiers() {
+    return PGProperty.QUOTE_RETURNING_IDENTIFIERS.getBoolean(properties);
+  }
+
+  /**
+   * @param quoteIdentifiers indicate whether to quote identifiers
+   * @see PGProperty#QUOTE_RETURNING_IDENTIFIERS
+   */
+  public void setQuoteReturningIdentifiers(boolean quoteIdentifiers) {
+    PGProperty.QUOTE_RETURNING_IDENTIFIERS.set(properties, quoteIdentifiers);
+  }
+
+  /**
    * @return receive buffer size
    * @see PGProperty#RECEIVE_BUFFER_SIZE
    */
@@ -798,6 +814,22 @@ public abstract class BaseDataSource implements CommonDataSource, Referenceable 
    */
   public boolean getTcpKeepAlive() {
     return PGProperty.TCP_KEEP_ALIVE.getBoolean(properties);
+  }
+
+  /**
+   * @param enabled if TCP no delay should be enabled
+   * @see PGProperty#TCP_NO_DELAY
+   */
+  public void setTcpNoDelay( boolean enabled ) {
+    PGProperty.TCP_NO_DELAY.set(properties,enabled);
+  }
+
+  /**
+   * @return true if TCP no delay is enabled
+   * @see PGProperty#TCP_NO_DELAY
+   */
+  public boolean getTcpNoDelay() {
+    return PGProperty.TCP_NO_DELAY.getBoolean( properties );
   }
 
   /**
@@ -1290,6 +1322,26 @@ public abstract class BaseDataSource implements CommonDataSource, Referenceable 
     setUrl(url);
   }
 
+  /**
+   *
+   * @return the class name to use for the Authentication Plugin.
+   *         This can be null in which case the default password authentication plugin will be used
+   */
+  public @Nullable String getAuthenticationPluginClassName() {
+    return PGProperty.AUTHENTICATION_PLUGIN_CLASS_NAME.get(properties);
+  }
+
+  /**
+   *
+   * @param className name of a class which implements {@link org.postgresql.plugin.AuthenticationPlugin}
+   *                  This class will be used to get the encoded bytes to be sent to the server as the
+   *                  password to authenticate the user.
+   *
+   */
+  public void setAuthenticationPluginClassName(String className) {
+    PGProperty.AUTHENTICATION_PLUGIN_CLASS_NAME.set(properties, className);
+  }
+
   public @Nullable String getProperty(String name) throws SQLException {
     PGProperty pgProperty = PGProperty.forName(name);
     if (pgProperty != null) {
@@ -1575,7 +1627,6 @@ public abstract class BaseDataSource implements CommonDataSource, Referenceable 
     PGProperty.ADAPTIVE_FETCH_MINIMUM.set(properties, adaptiveFetchMinimum);
   }
 
-  //#if mvn.project.property.postgresql.jdbc.spec >= "JDBC4.1"
   @Override
   public java.util.logging.Logger getParentLogger() {
     return Logger.getLogger("org.postgresql");

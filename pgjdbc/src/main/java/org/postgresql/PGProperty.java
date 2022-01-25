@@ -33,27 +33,27 @@ public enum PGProperty {
    * Default value is false.
    */
   ADAPTIVE_FETCH(
-    "adaptiveFetch",
-    "false",
-    "Specifies if number of rows fetched in ResultSet should be adaptive to maxResultBuffer and max row size."),
+      "adaptiveFetch",
+      "false",
+      "Specifies if number of rows fetched in ResultSet should be adaptive to maxResultBuffer and max row size."),
 
   /**
    * Specifies the highest number of rows which can be calculated by adaptiveFetch. Requires
    * adaptiveFetch set to true to work. Default value is -1 (used as infinity).
    */
   ADAPTIVE_FETCH_MAXIMUM(
-    "adaptiveFetchMaximum",
-    "-1",
-    "Specifies maximum number of rows used by adaptive fetch."),
+      "adaptiveFetchMaximum",
+      "-1",
+      "Specifies maximum number of rows used by adaptive fetch."),
 
   /**
    * Specifies the lowest number of rows which can be calculated by adaptiveFetch. Requires
    * adaptiveFetch set to true to work. Default value is 0.
    */
   ADAPTIVE_FETCH_MINIMUM(
-    "adaptiveFetchMinimum",
-    "0",
-    "Specifies minimum number of rows used by adaptive fetch."),
+      "adaptiveFetchMinimum",
+      "0",
+      "Specifies minimum number of rows used by adaptive fetch."),
 
   /**
    * When using the V3 protocol the driver monitors changes in certain server configuration
@@ -81,6 +81,16 @@ public enum PGProperty {
       "assumeMinServerVersion",
       null,
       "Assume the server is at least that version"),
+
+  /**
+   * AuthenticationPluginClass
+   */
+
+  AUTHENTICATION_PLUGIN_CLASS_NAME(
+      "authenticationPluginClassName",
+      null,
+      "Name of class which implements AuthenticationPlugin"
+  ),
 
   /**
    * Specifies what the driver should do if a query fails. In {@code autosave=always} mode, JDBC driver sets a savepoint before each query,
@@ -288,11 +298,11 @@ public enum PGProperty {
   ),
 
   GSS_ENC_MODE(
-        "gssEncMode",
-        "allow",
-        "Force Encoded GSS Mode",
-        false,
-        new String[] {"disable", "allow", "prefer", "require"}
+      "gssEncMode",
+      "allow",
+      "Force Encoded GSS Mode",
+      false,
+      new String[] {"disable", "allow", "prefer", "require"}
   ),
 
   /**
@@ -329,7 +339,7 @@ public enum PGProperty {
    */
   JAAS_APPLICATION_NAME(
       "jaasApplicationName",
-      null,
+      "pgjdbc",
       "Specifies the name of the JAAS system or application login configuration."),
 
   /**
@@ -457,7 +467,7 @@ public enum PGProperty {
    */
   PG_HOST(
       "PGHOST",
-      null,
+      "localhost",
       "Hostname of the PostgreSQL server (may be specified directly in the JDBC URL)",
       false),
 
@@ -466,7 +476,7 @@ public enum PGProperty {
    */
   PG_PORT(
       "PGPORT",
-      null,
+      "5432",
       "Port of the PostgreSQL server (may be specified directly in the JDBC URL)"),
 
   /**
@@ -522,6 +532,17 @@ public enum PGProperty {
       false,
       new String[] {"3"}),
 
+  /**
+   * Quote returning columns.
+   * There are some ORM's that quote everything, including returning columns
+   * If we quote them, then we end up sending ""colname"" to the backend
+   * which will not be found
+   */
+  QUOTE_RETURNING_IDENTIFIERS(
+    "quoteReturningIdentifiers",
+    "true",
+    "Quote identifiers provided in returning array",
+      false),
   /**
    * Puts this connection in read-only mode.
    */
@@ -593,6 +614,16 @@ public enum PGProperty {
       "sendBufferSize",
       "-1",
       "Socket write buffer size"),
+
+  /**
+   * Service name to use for additional parameters. It specifies a service name in "pg_service
+   * .conf" that holds additional connection parameters. This allows applications to specify only
+   * a service name so connection parameters can be centrally maintained.
+   */
+  SERVICE(
+      "service",
+      null,
+      "Service name to be searched in pg_service.conf resource"),
 
   /**
    * Socket factory used to create socket. A null value, which is the default, means system default.
@@ -751,6 +782,11 @@ public enum PGProperty {
       "false",
       "Enable or disable TCP keep-alive. The default is {@code false}."),
 
+  TCP_NO_DELAY(
+      "tcpNoDelay",
+      "false",
+      "Enable or disable TCP no delay. The default is (@code false}."
+  ),
   /**
    * Specifies the length to return for types of unknown length.
    */

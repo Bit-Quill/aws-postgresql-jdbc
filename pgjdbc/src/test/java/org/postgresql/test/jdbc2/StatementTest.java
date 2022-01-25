@@ -15,6 +15,7 @@ import static org.junit.Assert.fail;
 import org.postgresql.PGProperty;
 import org.postgresql.core.ServerVersion;
 import org.postgresql.jdbc.PgStatement;
+import org.postgresql.test.SlowTests;
 import org.postgresql.test.TestUtil;
 import org.postgresql.test.util.StrangeProxyServer;
 import org.postgresql.util.PSQLState;
@@ -24,6 +25,7 @@ import org.junit.Assert;
 import org.junit.Assume;
 import org.junit.Before;
 import org.junit.Test;
+import org.junit.experimental.categories.Category;
 
 import java.io.IOException;
 import java.sql.Connection;
@@ -474,57 +476,58 @@ public class StatementTest {
   @Test
   public void testWarningsAreAvailableAsap()
       throws Exception {
-    final Connection outerLockCon = TestUtil.openDB();
-    outerLockCon.setAutoCommit(false);
-    //Acquire an exclusive lock so we can block the notice generating statement
-    outerLockCon.createStatement().execute("LOCK TABLE test_lock IN ACCESS EXCLUSIVE MODE;");
-    con.createStatement()
-            .execute("CREATE OR REPLACE FUNCTION notify_then_sleep() RETURNS VOID AS "
-                + "$BODY$ "
-                + "BEGIN "
-                + "RAISE NOTICE 'Test 1'; "
-                + "RAISE NOTICE 'Test 2'; "
-                + "LOCK TABLE test_lock IN ACCESS EXCLUSIVE MODE; "
-                + "END "
-                + "$BODY$ "
-                + "LANGUAGE plpgsql;");
-    con.createStatement().execute("SET SESSION client_min_messages = 'NOTICE'");
-    //If we never receive the two warnings the statement will just hang, so set a low timeout
-    con.createStatement().execute("SET SESSION statement_timeout = 1000");
-    final PreparedStatement preparedStatement = con.prepareStatement("SELECT notify_then_sleep()");
-    final Callable<Void> warningReader = new Callable<Void>() {
-      @Override
-      public Void call() throws SQLException, InterruptedException {
-        while (true) {
-          SQLWarning warning = preparedStatement.getWarnings();
-          if (warning != null) {
-            assertEquals("First warning received not first notice raised",
-                "Test 1", warning.getMessage());
-            SQLWarning next = warning.getNextWarning();
-            if (next != null) {
-              assertEquals("Second warning received not second notice raised",
-                  "Test 2", next.getMessage());
-              //Release the lock so that the notice generating statement can end.
-              outerLockCon.commit();
-              return null;
+    try (Connection outerLockCon = TestUtil.openDB()) {
+      outerLockCon.setAutoCommit(false);
+      //Acquire an exclusive lock so we can block the notice generating statement
+      outerLockCon.createStatement().execute("LOCK TABLE test_lock IN ACCESS EXCLUSIVE MODE;");
+      con.createStatement()
+              .execute("CREATE OR REPLACE FUNCTION notify_then_sleep() RETURNS VOID AS "
+                  + "$BODY$ "
+                  + "BEGIN "
+                  + "RAISE NOTICE 'Test 1'; "
+                  + "RAISE NOTICE 'Test 2'; "
+                  + "LOCK TABLE test_lock IN ACCESS EXCLUSIVE MODE; "
+                  + "END "
+                  + "$BODY$ "
+                  + "LANGUAGE plpgsql;");
+      con.createStatement().execute("SET SESSION client_min_messages = 'NOTICE'");
+      //If we never receive the two warnings the statement will just hang, so set a low timeout
+      con.createStatement().execute("SET SESSION statement_timeout = 1000");
+      final PreparedStatement preparedStatement = con.prepareStatement("SELECT notify_then_sleep()");
+      final Callable<Void> warningReader = new Callable<Void>() {
+        @Override
+        public Void call() throws SQLException, InterruptedException {
+          while (true) {
+            SQLWarning warning = preparedStatement.getWarnings();
+            if (warning != null) {
+              assertEquals("First warning received not first notice raised",
+                  "Test 1", warning.getMessage());
+              SQLWarning next = warning.getNextWarning();
+              if (next != null) {
+                assertEquals("Second warning received not second notice raised",
+                    "Test 2", next.getMessage());
+                //Release the lock so that the notice generating statement can end.
+                outerLockCon.commit();
+                return null;
+              }
             }
+            //Break the loop on InterruptedException
+            Thread.sleep(0);
           }
-          //Break the loop on InterruptedException
-          Thread.sleep(0);
         }
-      }
-    };
-    ExecutorService executorService = Executors.newSingleThreadExecutor();
-    try {
-      Future<Void> future = executorService.submit(warningReader);
-      //Statement should only finish executing once we have
-      //received the two notices and released the outer lock.
-      preparedStatement.execute();
+      };
+      ExecutorService executorService = Executors.newSingleThreadExecutor();
+      try {
+        Future<Void> future = executorService.submit(warningReader);
+        //Statement should only finish executing once we have
+        //received the two notices and released the outer lock.
+        preparedStatement.execute();
 
-      //If test takes longer than 2 seconds its a failure.
-      future.get(2, TimeUnit.SECONDS);
-    } finally {
-      executorService.shutdownNow();
+        //If test takes longer than 2 seconds its a failure.
+        future.get(2, TimeUnit.SECONDS);
+      } finally {
+        executorService.shutdownNow();
+      }
     }
   }
 
@@ -694,6 +697,7 @@ public class StatementTest {
   }
 
   @Test
+  @Category(SlowTests.class)
   public void testSetQueryTimeout() throws SQLException {
     Statement stmt = con.createStatement();
     long start = 0;
@@ -716,6 +720,7 @@ public class StatementTest {
   }
 
   @Test
+  @Category(SlowTests.class)
   public void testLongQueryTimeout() throws SQLException {
     Statement stmt = con.createStatement();
     stmt.setQueryTimeout(Integer.MAX_VALUE);
@@ -731,6 +736,7 @@ public class StatementTest {
    * one does not. The timeout of the first query should not impact the second one.
    */
   @Test
+  @Category(SlowTests.class)
   public void testShortQueryTimeout() throws SQLException {
     assumeLongTest();
 
@@ -857,6 +863,7 @@ public class StatementTest {
   }
 
   @Test(timeout = 30000)
+  @Category(SlowTests.class)
   public void testCancelQueryWithBrokenNetwork() throws SQLException, IOException, InterruptedException {
     // check that stmt.cancel() doesn't hang forever if the network is broken
 

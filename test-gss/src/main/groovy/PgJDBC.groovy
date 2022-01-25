@@ -1,6 +1,5 @@
 import org.postgresql.PGProperty
 
-import javax.xml.transform.stream.StreamResult
 import java.sql.Connection
 import java.sql.DriverManager
 import java.sql.ResultSet
