@@ -53,7 +53,6 @@ public class AwsIamAuthenticationIntegrationTests {
     if (password != null) {
       properties.setProperty(PGProperty.PASSWORD.getName(), password);
     }
-    properties.setProperty(PGProperty.USE_AWS_IAM.getName(), Boolean.TRUE.toString());
     properties.setProperty(PGProperty.AUTHENTICATION_PLUGIN_CLASS_NAME.getName(), AwsIamAuthenticationPlugin.class.getName());
 
     return properties;

@@ -314,10 +314,6 @@ For more information on limitations and recommendations, please refer to [IAM da
 For more information, please refer to [Creating a database account using IAM authentication](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/UsingWithRDS.IAMDBAuth.DBAccounts.html#UsingWithRDS.IAMDBAuth.DBAccounts.PostgreSQL).
 
 #### Using AWS IAM Database Authentication
-| Parameter                       |  Value  | Default Value | Description                                                                                                                                                                                                                                                                                                  |
-|---------------------------------|:-------:|:-------------:|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `useAwsIam`                     | Boolean |    `false`    | Set to `true` to use AWS IAM database authentication.                                                                                                                                                                                                                                                        |
-| `authenticationPluginClassName` | String  |     null      | Fully qualified class name of the class implementing the AuthenticationPlugin interface. If this is null, the password value in the connection properties will be used. Set this to the AWSIamAuthenticationPlugin class name to use AWS IAM database authentication (example available in the sample code). |
 
 ##### Sample Code
 ```java
@@ -339,7 +335,6 @@ public class AwsIamAuthenticationSample {
   public static void main(String[] args) throws SQLException {
     final Properties properties = new Properties();
     properties.setProperty(PGProperty.USER.getName(), USER);
-    properties.setProperty(PGProperty.USE_AWS_IAM.getName(), Boolean.TRUE.toString());
     properties.setProperty(PGProperty.AUTHENTICATION_PLUGIN_CLASS_NAME.getName(), AwsIamAuthenticationPlugin.class.getName());
     
     try (Connection conn = DriverManager.getConnection(CONNECTION_STRING, properties)) {
