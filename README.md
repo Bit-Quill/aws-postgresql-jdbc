@@ -314,6 +314,7 @@ For more information on limitations and recommendations, please refer to [IAM da
 For more information, please refer to [Creating a database account using IAM authentication](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/UsingWithRDS.IAMDBAuth.DBAccounts.html#UsingWithRDS.IAMDBAuth.DBAccounts.PostgreSQL).
 
 #### Using AWS IAM Database Authentication
+To enable the AWS IAM database authentication for this driver, use the `authenticationPluginClassName` connection property available in the base driver. Set the value to the fully qualified class name of the class implementing the `AuthenticationPlugin` interface, which for the AWS JDBC Driver for PostgreSQL is the `AWSIamAuthenticationPlugin` class. There is an example below.
 
 ##### Sample Code
 ```java
