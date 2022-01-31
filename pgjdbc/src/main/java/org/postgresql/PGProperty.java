@@ -805,15 +805,6 @@ public enum PGProperty {
       true),
 
   /**
-   * Use AWS IAM authentication to access the database.
-   */
-  USE_AWS_IAM(
-      "useAwsIam",
-      "false",
-      "Use AWS IAM authentication to connect to the database."
-  ),
-
-  /**
    * Use SPNEGO in SSPI authentication requests.
    */
   USE_SPNEGO(

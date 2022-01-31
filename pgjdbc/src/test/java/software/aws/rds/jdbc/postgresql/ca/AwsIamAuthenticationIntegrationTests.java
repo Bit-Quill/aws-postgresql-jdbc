@@ -11,6 +11,7 @@ import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.postgresql.Driver;
 import org.postgresql.PGProperty;
+import org.postgresql.core.v3.plugins.AwsIamAuthenticationPlugin;
 import org.postgresql.util.PSQLException;
 
 import java.sql.DriverManager;
@@ -20,7 +21,8 @@ import java.util.Properties;
 @Disabled
 public class AwsIamAuthenticationIntegrationTests {
   private static final String CONNECTION_STRING_PREFIX = "jdbc:postgresql://";
-  private static final String CONNECTION_STRING = CONNECTION_STRING_PREFIX + System.getenv("PG_AURORA_INSTANCE_ENDPOINT");
+  private static final String CONNECTION_STRING_TEST_DB = "/" + System.getenv("PG_AURORA_TEST_DB");
+  private static final String CONNECTION_STRING = CONNECTION_STRING_PREFIX + System.getenv("PG_AURORA_INSTANCE_ENDPOINT") + CONNECTION_STRING_TEST_DB;
   private static final String VALID_AWS_DB_USER = System.getenv("PG_AURORA_IAM_USER");
 
   @Test
@@ -51,7 +53,7 @@ public class AwsIamAuthenticationIntegrationTests {
     if (password != null) {
       properties.setProperty(PGProperty.PASSWORD.getName(), password);
     }
-    properties.setProperty(PGProperty.USE_AWS_IAM.getName(), Boolean.TRUE.toString());
+    properties.setProperty(PGProperty.AUTHENTICATION_PLUGIN_CLASS_NAME.getName(), AwsIamAuthenticationPlugin.class.getName());
 
     return properties;
   }
