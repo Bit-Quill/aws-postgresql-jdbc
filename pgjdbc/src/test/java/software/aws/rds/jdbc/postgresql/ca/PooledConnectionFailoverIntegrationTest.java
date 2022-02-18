@@ -50,6 +50,8 @@ public class PooledConnectionFailoverIntegrationTest extends FailoverIntegration
 
     // Assert that the pooled connection is valid.
     assertTrue(testConnection.isValid(IS_VALID_TIMEOUT));
+
+    testConnection.close();
   }
 
   /** Reader connection failover within the connection pool. */
@@ -71,5 +73,7 @@ public class PooledConnectionFailoverIntegrationTest extends FailoverIntegration
 
     // Assert that the pooled connection is valid.
     assertTrue(testConnection.isValid(IS_VALID_TIMEOUT));
+
+    testConnection.close();
   }
 }
